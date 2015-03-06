@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<title>Web VR boilerplate (Cardboard and Oculus)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+body {
+  background-color: #000;
+  color: #fff;
+  margin: 0px;
+  padding: 0;
+  overflow: hidden;
+}
+</style>
+</head>
+
+<body>
+
+</body>
+
+<script src="js/three.min.js"></script>
+<script src="js/VRControls.js"></script>
+<script src="js/VREffect.js"></script>
+<script src="js/webvr-polyfill.js"></script>
+<script src="js/webvr-manager.js"></script>
+<script src="js/manifold.js"></script>
+
+<script>
+var M = manifold;
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+document.body.appendChild(renderer.domElement);
+
+// Create a three.js scene
+var scene = new THREE.Scene();
+scene.fog = new THREE.Fog( 0x000000, 10, 25 );
+
+var light = new THREE.PointLight( 0xffffff, 1, 0 );
+light.position.set( 0,0,0 );
+scene.add( light );
+
+light = new THREE.PointLight( 0x33302c, 1, 0 );
+light.position.set( 0,.8, -5);
+scene.add( light );
+
+light = new THREE.PointLight( 0x33302c, 1, 0 );
+light.position.set( 0,.8, 5);
+scene.add( light );
+
+// Create a three.js camera
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 100000);
+
+// Apply VR headset positional data to camera.
+var controls = new THREE.VRControls(camera);
+
+// Apply VR stereo rendering to renderer
+var effect = new THREE.VREffect(renderer);
+effect.setSize(window.innerWidth, window.innerHeight);
+
+// Create a VR manager helper to enter and exit VR mode.
+var vrmgr = new WebVRManager(effect);
+
+// Create 3d objects
+var threeGeometry = M.ThreeJSRenderer();
+var geometry = threeGeometry.geometry;
+
+function randomize(theta, z) {
+  var variance = .4;
+  var width = .75;
+  var x = width*Math.cos(theta) + Math.random()*variance - .2;
+  var y = width*Math.sin(theta) + Math.random()*variance;
+  var z = z + Math.random() * variance;
+  return [x,y,z];
+}
+
+var spine = M.Path([0,0,-400]).line([0,0,0]);
+var N = 13;
+M.PathParameterized(spine, 1000, N+1)
+( function(profile) {
+    var origin = randomize(0,profile.z);
+    var path = M.Path(origin);
+    for (var i=1; i<N; i++)
+      path = path.line(randomize(2*Math.PI*i/N, profile.z));
+    path = path.line(origin);
+    return path;
+  }
+)
+( M.facers( M.skin )
+  ( threeGeometry.renderer )
+);
+
+
+//geometry.computeBoundingSphere();
+geometry.computeFaceNormals();
+
+//var geometry = new THREE.IcosahedronGeometry(10, 1); // new THREE.BoxGeometry(10, 10, 10);
+
+var cube = THREE.SceneUtils.createMultiMaterialObject(
+    geometry.clone(), [
+      new THREE.MeshPhongMaterial({ color: 0x00000, shininess:80, specular: 0xaa9999 }),
+      new THREE.MeshBasicMaterial({ wireframe: true, wireframeLinewidth:2, color: 0xefe9e6 })
+    ]);
+//var material = new THREE.MeshNormalMaterial();
+//var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0xffffff });
+// var cube = new THREE.Mesh(geometry, material);
+
+// Position cube mesh
+cube.position.z = -25;
+
+// Add cube mesh to your three.js scene
+scene.add(cube);
+
+// Request animation frame loop function
+function animate() {
+  // Apply rotation to cube mesh
+  cube.position.z += 0.05;
+//  light.position.z += 0.005;
+
+  // Update VR headset position and apply to camera.
+  controls.update();
+
+  // Render the scene through the VREffect, but only if it's in VR mode.
+  if (vrmgr.isVRMode()) {
+    effect.render(scene, camera);
+  } else {
+    renderer.render(scene, camera);
+  }
+
+  requestAnimationFrame( animate );
+}
+
+// Kick off animation loop
+animate();
+
+// Listen for keyboard event and zero positional sensor on appropriate keypress.
+function onKey(event) {
+  if (event.keyCode == 90) { // z
+    controls.zeroSensor();
+  }
+};
+
+window.addEventListener('keydown', onKey, true);
+
+
+// Handle window resizes
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  effect.setSize( window.innerWidth, window.innerHeight );
+}
+
+window.addEventListener('resize', onWindowResize, false);
+
+</script>
+</html>
