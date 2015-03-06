@@ -2,7 +2,7 @@
 
 <html lang="en">
 <head>
-<title>Web VR boilerplate (Cardboard and Oculus)</title>
+<title>Shiny Tunnel</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -100,26 +100,22 @@ geometry.computeFaceNormals();
 
 //var geometry = new THREE.IcosahedronGeometry(10, 1); // new THREE.BoxGeometry(10, 10, 10);
 
-var cube = THREE.SceneUtils.createMultiMaterialObject(
+var tunnel = THREE.SceneUtils.createMultiMaterialObject(
     geometry.clone(), [
       new THREE.MeshPhongMaterial({ color: 0x00000, shininess:80, specular: 0xaa9999 }),
       new THREE.MeshBasicMaterial({ wireframe: true, wireframeLinewidth:2, color: 0xefe9e6 })
     ]);
-//var material = new THREE.MeshNormalMaterial();
-//var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0xffffff });
-// var cube = new THREE.Mesh(geometry, material);
 
-// Position cube mesh
-cube.position.z = -25;
+// Position tunnel mesh
+tunnel.position.z = -25;
 
-// Add cube mesh to your three.js scene
-scene.add(cube);
+// Add tunnel mesh to your three.js scene
+scene.add(tunnel);
 
 // Request animation frame loop function
 function animate() {
-  // Apply rotation to cube mesh
-  cube.position.z += 0.05;
-//  light.position.z += 0.005;
+  // Apply rotation to tunnel mesh
+  tunnel.position.z += 0.05;
 
   // Update VR headset position and apply to camera.
   controls.update();
