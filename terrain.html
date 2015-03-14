@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<title>Terrain</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+body {
+  background-color: #000;
+  color: #fff;
+  margin: 0px;
+  padding: 0;
+  overflow: hidden;
+}
+</style>
+</head>
+
+<body>
+
+</body>
+
+<script src="js/three.min.js"></script>
+<script src="js/VRControls.js"></script>
+<script src="js/VREffect.js"></script>
+<script src="js/webvr-polyfill.js"></script>
+<script src="js/webvr-manager.js"></script>
+<script src="js/manifold.js"></script>
+
+<script>
+var M = manifold;
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+document.body.appendChild(renderer.domElement);
+
+// Create a three.js scene
+var scene = new THREE.Scene();
+scene.fog = new THREE.Fog( 0x000000, 40, 50 );
+
+var light = new THREE.PointLight( 0x666666, 1, 0 );
+light.position.set( 0,40,-4 );
+scene.add( light );
+
+light = new THREE.PointLight( 0x665544, 1, 0 );
+light.position.set( 40,40, -25);
+scene.add( light );
+
+light = new THREE.PointLight( 0x665544, 1, 0 );
+light.position.set( -40,40, -25);
+//scene.add( light );
+
+light = new THREE.AmbientLight( 0xffffff );
+//scene.add( light );
+
+// Create a three.js camera
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 100000);
+
+// Apply VR headset positional data to camera.
+var controls = new THREE.VRControls(camera);
+
+// Apply VR stereo rendering to renderer
+var effect = new THREE.VREffect(renderer);
+effect.setSize(window.innerWidth, window.innerHeight);
+
+// Create a VR manager helper to enter and exit VR mode.
+var vrmgr = new WebVRManager(effect);
+
+// Create 3d objects
+var threeGeometry = M.ThreeJSRenderer();
+var geometry = threeGeometry.geometry;
+
+function lerp(a,b,x) { return a + x*(b-a); }
+
+function diamondSquare( seeds, N, C ) {
+  for (var i=0; i<N; i++) {
+    var c = C / Math.pow(2,i);
+    var map = [];
+    for (var j=0; j<seeds.length; j++) {
+      var row = seeds[j];
+
+      if (j>0) {
+        var left = lerp(seeds[j-1][0],seeds[j][0],.5);
+        for (var k=1, next = [left], right; k<row.length; k++) {
+          right = lerp(seeds[j-1][k],seeds[j][k],.5)
+          next.push(lerp(left,right,.5) + c*Math.random() - c/2);
+          next.push(left = right);
+        }
+        map.push(next);
+      }
+
+      for (var k=1, next = [row[0]]; k<row.length; k++) {
+        next.push(lerp(row[k-1],row[k],.5));
+        next.push(row[k]);
+      }
+      map.push(next);
+    }
+    seeds = map;
+  }
+  return map;
+}
+
+var terrain = diamondSquare( [
+  [Math.random(),Math.random(),Math.random()],
+  [Math.random(),-1*Math.random(),Math.random()],
+  [Math.random(),Math.random(),Math.random()]], 8, 1);
+
+function terrainInterp( terrain, x, y ) {
+  var dim = terrain.length-1;
+  var i = Math.floor(dim * x), i2 = x == 1 ? i : i+1;
+  var j = Math.floor(dim * y), j2 = y == 1 ? j : j+1;
+  return lerp( lerp(terrain[i][j], terrain[i2][j], dim*x-i),
+               lerp(terrain[i][j2], terrain[i2][j2], dim*x-i),
+               dim*y - j )
+}
+
+var Z = -1;
+var SPAN = 50;
+var SIDE = 200;
+M.step(SIDE)(M.parametric(function(x,y) {
+  return [SPAN*(2*x-1), Math.max(Z,20*terrainInterp(terrain,x,y)), SPAN*(2*y-1)]},M.step(SIDE))
+( M.facers( M.skin )
+  ( threeGeometry.renderer )
+));
+
+
+//geometry.computeBoundingSphere();
+geometry.computeFaceNormals();
+
+var tunnel = THREE.SceneUtils.createMultiMaterialObject(
+    geometry.clone(), [
+      new THREE.MeshPhongMaterial({ ambient: 0x666666, shininess:80, specular: 0x666666, color:0x333333 }),
+      new THREE.MeshPhongMaterial({ ambient: 0x666666, shininess:10, specular: 0x888888, wireframe:true, wireframeLinewidth:2 })
+    ]);
+
+// Position tunnel mesh
+//tunnel.position.z = -25;
+
+// Add tunnel mesh to your three.js scene
+scene.add(tunnel);
+
+// Request animation frame loop function
+function animate() {
+  // Apply rotation to tunnel mesh
+//  tunnel.position.z += 0.05;
+
+  // Update VR headset position and apply to camera.
+  controls.update();
+
+  // Render the scene through the VREffect, but only if it's in VR mode.
+  if (vrmgr.isVRMode()) {
+    effect.render(scene, camera);
+  } else {
+    renderer.render(scene, camera);
+  }
+
+  requestAnimationFrame( animate );
+}
+
+// Kick off animation loop
+animate();
+
+// Listen for keyboard event and zero positional sensor on appropriate keypress.
+function onKey(event) {
+  if (event.keyCode == 90) { // z
+    controls.zeroSensor();
+  }
+};
+
+window.addEventListener('keydown', onKey, true);
+
+
+// Handle window resizes
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  effect.setSize( window.innerWidth, window.innerHeight );
+}
+
+window.addEventListener('resize', onWindowResize, false);
+
+</script>
+</html>
