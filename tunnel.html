@@ -103,7 +103,7 @@ geometry.computeFaceNormals();
 var tunnel = THREE.SceneUtils.createMultiMaterialObject(
     geometry.clone(), [
       new THREE.MeshPhongMaterial({ color: 0x00000, shininess:80, specular: 0xaa9999 }),
-      new THREE.MeshBasicMaterial({ wireframe: true, wireframeLinewidth:2, color: 0xefe9e6 })
+      new THREE.MeshBasicMaterial({ wireframe: true, wireframeLinewidth:1, color: 0xefe9e6 })
     ]);
 
 // Position tunnel mesh
